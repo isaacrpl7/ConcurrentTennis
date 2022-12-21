@@ -8,7 +8,7 @@ import (
 )
 
 type Player struct {
-	estado    string //'Esperando', 'posse'
+	estado    string //'Esperando', 'Posse' ou 'Parar'
 	pontuacao int
 	nome      string
 }
@@ -17,7 +17,7 @@ func start(player *Player, enemy *Player, command chan string, wg *sync.WaitGrou
 	defer wg.Done()
 	for {
 		select {
-		case cmd := <-command:
+		case cmd := <-command: //Consumindo o channel e guardando em cmd
 			//fmt.Println(cmd)
 			switch cmd {
 			case "Parar":
@@ -27,28 +27,32 @@ func start(player *Player, enemy *Player, command chan string, wg *sync.WaitGrou
 			case "Pontuar":
 				player.pontuacao = player.pontuacao + 1
 				player.estado = "Posse"
+
+				//Determinando que um jogador ganhou do adversário
 				if adjust := player.pontuacao - 2; player.pontuacao >= 4 && adjust >= enemy.pontuacao {
 					fmt.Println(player.nome, "GANHOU O JOGO!")
 
 					fmt.Print(player.nome)
 					fmt.Print(": ")
-					fmt.Println(player.pontuacao)
+					fmt.Println(player.pontuacao, "pontos!")
 
 					fmt.Print(enemy.nome)
 					fmt.Print(": ")
-					fmt.Println(enemy.pontuacao)
+					fmt.Println(enemy.pontuacao, "pontos!")
 
 					player.estado = "Parar"
 					command <- "Parar"
 				}
 			default:
-				player.estado = "Play"
+				player.estado = "Esperando"
 			}
 		default:
 			if player.estado == "Posse" {
 				// Jogar
 				fmt.Println(player.nome, "jogando")
+				time.Sleep(1 * time.Second)
 
+				//Randomicamente determinando se o jogador acertou ou errou a jogada
 				s1 := rand.NewSource(time.Now().UnixNano())
 				r1 := rand.New(s1)
 				n := r1.Intn(2)
@@ -57,10 +61,16 @@ func start(player *Player, enemy *Player, command chan string, wg *sync.WaitGrou
 
 				if n == 0 {
 					fmt.Println(player.nome, "errou!")
+					fmt.Println("")
+					time.Sleep(1 * time.Second)
+
 					player.estado = "Esperando"
 					command <- "Pontuar"
 				} else {
 					fmt.Println(player.nome, "acertou!")
+					fmt.Println("")
+					time.Sleep(1 * time.Second)
+
 					player.estado = "Esperando"
 					command <- "Jogar"
 				}
@@ -83,6 +93,7 @@ func main() {
 
 	command := make(chan string) //Fazendo o channel para passar mensagens entre as gorotinas
 
+	//Iniciando as goRotinas
 	go start(&player1, &player2, command, &wg)
 	go start(&player2, &player1, command, &wg)
 
